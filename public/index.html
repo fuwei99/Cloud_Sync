@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SillyTavern Cloud Sync</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+        .card {
+            background-color: #fff;
+            border-color: #dee2e6;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            background-color: #f1f3f5;
+            border-bottom-color: #dee2e6;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background-color: #6c5ce7;
+            border-color: #5f50e6;
+        }
+        .btn-primary:hover {
+            background-color: #5f50e6;
+            border-color: #533de6;
+        }
+        .btn-outline-primary {
+            color: #6c5ce7;
+            border-color: #6c5ce7;
+        }
+        .btn-outline-primary:hover {
+            background-color: #6c5ce7;
+            border-color: #5f50e6;
+        }
+        .form-control {
+            background-color: #fff;
+            border-color: #ced4da;
+            color: #333;
+        }
+        .form-select {
+            background-color: #fff;
+            border-color: #ced4da;
+            color: #333;
+        }
+        .form-check-input:checked {
+            background-color: #6c5ce7;
+            border-color: #5f50e6;
+        }
+        .list-group-item {
+            background-color: #fff;
+            border-color: #dee2e6;
+            color: #333;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+        .nav-tabs .nav-link {
+            color: #6c757d;
+        }
+        .spinner-border {
+            margin-right: 5px;
+        }
+        #sync-progress {
+            display: none;
+        }
+        .progress {
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            background-color: #6c5ce7;
+        }
+        .service-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+        }
+        .text-success {
+            color: #40c057 !important;
+        }
+        .text-danger {
+            color: #fa5252 !important;
+        }
+        .sync-history-item {
+            border-left: 4px solid transparent;
+            padding-left: 10px;
+            margin-bottom: 5px;
+        }
+        .sync-history-item.success {
+            border-left-color: #40c057;
+        }
+        .sync-history-item.failed {
+            border-left-color: #fa5252;
+        }
+
+        /* Directory tree styles */
+        .directory-tree {
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .tree-item {
+            padding: 3px 0;
+            user-select: none;
+        }
+        .tree-item-content {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 2px 0;
+            border-radius: 4px;
+        }
+        .tree-item-content:hover {
+            background-color: #f1f3f5;
+        }
+        .tree-toggle {
+            width: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .tree-icon {
+            margin-right: 5px;
+            color: #6c5ce7;
+        }
+        .tree-icon.file {
+            color: #6c757d;
+        }
+        .tree-children {
+            margin-left: 20px;
+            display: none;
+        }
+        .tree-children.expanded {
+            display: block;
+        }
+        .tree-item-checkbox {
+            margin-right: 5px;
+        }
+        .tree-item-label {
+            flex-grow: 1;
+        }
+        .tree-item-size {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-left: 10px;
+        }
+        .indeterminate {
+            position: relative;
+            background-color: #b8b9bb !important;
+        }
+        .indeterminate:before {
+            content: "";
+            position: absolute;
+            display: block;
+            background-color: #6c5ce7;
+            width: 8px;
+            height: 8px;
+            top: 3px;
+            left: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">SillyTavern Cloud Sync</h2>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="serviceTabs" role="tablist">
+                            <!-- Modified Tabs Order and Content -->
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="github-tab" data-bs-toggle="tab" data-bs-target="#github" type="button" role="tab" aria-controls="github" aria-selected="true">GitHub</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="webdav-tab" data-bs-toggle="tab" data-bs-target="#webdav" type="button" role="tab" aria-controls="webdav" aria-selected="false">WebDAV</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="s3-tab" data-bs-toggle="tab" data-bs-target="#s3" type="button" role="tab" aria-controls="s3" aria-selected="false">S3</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="sftp-tab" data-bs-toggle="tab" data-bs-target="#sftp" type="button" role="tab" aria-controls="sftp" aria-selected="false">SFTP</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="serviceTabsContent">
+                            
+                            <!-- GitHub settings -->
+                            <div class="tab-pane fade show active" id="github" role="tabpanel" aria-labelledby="github-tab">
+                                <div class="mb-3">
+                                    <p>使用GitHub仓库同步您的SillyTavern数据。</p>
+                                    <div id="github-auth-status" class="alert alert-info">
+                                        请输入您的GitHub个人访问令牌和仓库详情。
+                                    </div>
+                                    
+                                    <!-- Add GitHub configuration selection dropdown -->
+                                    <div class="mb-3">
+                                        <label for="github-config-select" class="form-label">配置选择</label>
+                                        <div class="input-group">
+                                            <select class="form-select" id="github-config-select">
+                                                <option value="">-- 选择一个配置 --</option>
+                                            </select>
+                                            <button class="btn btn-outline-secondary" id="github-add-btn" title="添加新配置">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" id="github-delete-btn" title="删除选中配置">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="github-pat" class="form-label">个人访问令牌 (PAT)</label>
+                                        <input type="text" class="form-control" id="github-pat">
+                                        <div class="form-text">
+                                            <a href="https://github.com/settings/tokens/new?scopes=repo&description=SillyTavern Cloud Sync" target="_blank">
+                                                创建一个具有'repo'权限的新个人访问令牌。
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="github-repo" class="form-label">仓库</label>
+                                        <input type="text" class="form-control" id="github-repo" placeholder="用户名/仓库名">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="github-branch" class="form-label">分支</label>
+                                        <input type="text" class="form-control" id="github-branch" placeholder="main">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="github-path" class="form-label">路径前缀 (可选)</label>
+                                        <input type="text" class="form-control" id="github-path" placeholder="sillytavern_data/">
+                                        <div class="form-text">仓库中存储数据的路径。留空表示根目录。必须以'/'结尾。</div>
+                                    </div>
+                                    <button id="github-connect-btn" class="btn btn-primary">保存GitHub配置</button>
+                                    
+                                    <!-- New Git Commands Section -->
+                                    <div class="mt-4">
+                                        <h5>Git命令</h5>
+                                        <p class="text-muted smaller">这些命令提供了比API同步更快的替代方案。</p>
+                                        <div class="alert alert-secondary p-2 mb-3">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-terminal me-2"></i>
+                                                <span>对于大型仓库，直接使用Git会比API同步快得多。</span>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <div class="card card-body">
+                                                    <h6>快速设置</h6>
+                                                    <button id="github-init-git-btn" class="btn btn-sm btn-outline-secondary mb-2">
+                                                        <i class="bi bi-git"></i> 初始化Git仓库
+                                                    </button>
+                                                    <div id="git-init-output" class="small text-muted mt-2" style="display: none;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card card-body">
+                                                    <h6>配置</h6>
+                                                    <button id="github-create-gitignore-btn" class="btn btn-sm btn-outline-secondary mb-2">
+                                                        <i class="bi bi-file-earmark-code"></i> 创建.gitignore
+                                                    </button>
+                                                    <div id="git-gitignore-output" class="small text-muted mt-2" style="display: none;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card card-body mb-3">
+                                            <h6>同步操作</h6>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <button id="github-commit-btn" class="btn btn-sm btn-outline-primary mb-2">
+                                                        <i class="bi bi-check2-circle"></i> 提交更改
+                                                    </button>
+                                                    <button id="github-push-btn" class="btn btn-sm btn-outline-primary mb-2">
+                                                        <i class="bi bi-upload"></i> 推送到远程
+                                                    </button>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <button id="github-pull-btn" class="btn btn-sm btn-outline-secondary mb-2">
+                                                        <i class="bi bi-download"></i> 从远程拉取
+                                                    </button>
+                                                    <button id="github-status-btn" class="btn btn-sm btn-outline-secondary mb-2">
+                                                        <i class="bi bi-info-circle"></i> 查看Git状态
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div id="git-command-output" class="small text-muted mt-2" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        <div class="alert alert-info small">
+                                            <i class="bi bi-info-circle"></i> 所有Git命令都在<code>data</code>目录下操作。更改可能需要一些时间才能在SillyTavern中显示。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- WebDAV settings -->
+                            <div class="tab-pane fade" id="webdav" role="tabpanel" aria-labelledby="webdav-tab">
+                                <div class="mb-3">
+                                    <p>Sync your SillyTavern data using a WebDAV server.</p>
+                                    <div id="webdav-auth-status" class="alert alert-info">
+                                        Please enter your WebDAV server information.
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="webdav-url" class="form-label">Server URL</label>
+                                        <input type="url" class="form-control" id="webdav-url" placeholder="https://webdav.example.com/remote.php/dav/files/username/">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="webdav-username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="webdav-username">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="webdav-password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="webdav-password">
+                                    </div>
+                                     <div class="mb-3">
+                                        <label for="webdav-path" class="form-label">Remote Path</label>
+                                        <input type="text" class="form-control" id="webdav-path" placeholder="sillytavern_data/">
+                                        <div class="form-text">Path on the WebDAV server where data will be stored. Must end with '/'.</div>
+                                    </div>
+                                    <button id="webdav-connect-btn" class="btn btn-primary">Save WebDAV Config</button>
+                                </div>
+                            </div>
+                            
+                             <!-- S3 settings -->
+                            <div class="tab-pane fade" id="s3" role="tabpanel" aria-labelledby="s3-tab">
+                                <div class="mb-3">
+                                    <p>Sync your SillyTavern data using an S3 compatible service.</p>
+                                    <div id="s3-auth-status" class="alert alert-info">
+                                        Please enter your S3 credentials and bucket details.
+                                    </div>
+                                     <div class="mb-3">
+                                        <label for="s3-access-key-id" class="form-label">Access Key ID</label>
+                                        <input type="text" class="form-control" id="s3-access-key-id">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="s3-secret-access-key" class="form-label">Secret Access Key</label>
+                                        <input type="password" class="form-control" id="s3-secret-access-key">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="s3-bucket" class="form-label">Bucket Name</label>
+                                        <input type="text" class="form-control" id="s3-bucket">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="s3-region" class="form-label">Region</label>
+                                        <input type="text" class="form-control" id="s3-region" placeholder="us-east-1">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="s3-endpoint" class="form-label">Endpoint URL (Optional)</label>
+                                        <input type="url" class="form-control" id="s3-endpoint" placeholder="https://s3.example.com">
+                                         <div class="form-text">Required for S3-compatible services (MinIO, etc.). Leave empty for AWS S3.</div>
+                                    </div>
+                                     <div class="mb-3">
+                                        <label for="s3-path-prefix" class="form-label">Path Prefix (Optional)</label>
+                                        <input type="text" class="form-control" id="s3-path-prefix" placeholder="sillytavern_data/">
+                                         <div class="form-text">Prefix for object keys. Must end with '/'. Leave empty for root.</div>
+                                    </div>
+                                    <button id="s3-connect-btn" class="btn btn-primary">Save S3 Config</button>
+                                </div>
+                            </div>
+
+                            <!-- SFTP settings -->
+                            <div class="tab-pane fade" id="sftp" role="tabpanel" aria-labelledby="sftp-tab">
+                                <div class="mb-3">
+                                    <p>Sync your SillyTavern data using an SFTP server.</p>
+                                     <div id="sftp-auth-status" class="alert alert-info">
+                                        Please enter your SFTP server details.
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="sftp-host" class="form-label">Host</label>
+                                        <input type="text" class="form-control" id="sftp-host" placeholder="sftp.example.com">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="sftp-port" class="form-label">Port</label>
+                                        <input type="number" class="form-control" id="sftp-port" placeholder="22">
+                                    </div>
+                                     <div class="mb-3">
+                                        <label for="sftp-username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="sftp-username">
+                                    </div>
+                                     <div class="mb-3">
+                                        <label class="form-label">Authentication</label>
+                                        <div>
+                                            <input type="radio" name="sftpAuth" id="sftpAuthPass" value="password" checked> <label for="sftpAuthPass">Password</label>
+                                            <input type="radio" name="sftpAuth" id="sftpAuthKey" value="key"> <label for="sftpAuthKey">Private Key</label>
+                                        </div>
+                                    </div>
+                                    <div id="sftpPassFields">
+                                        <label for="sftp-password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="sftp-password">
+                                    </div>
+                                    <div id="sftpKeyFields" style="display: none;">
+                                         <label for="sftp-privateKey" class="form-label">Private Key</label>
+                                         <textarea class="form-control" id="sftp-privateKey" rows="4" placeholder="Paste your private key here (e.g., -----BEGIN OPENSSH PRIVATE KEY-----..."></textarea>
+                                         <label for="sftp-passphrase" class="form-label">Passphrase (Optional)</label>
+                                         <input type="password" class="form-control" id="sftp-passphrase">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="sftp-path" class="form-label">Remote Path</label>
+                                        <input type="text" class="form-control" id="sftp-path" placeholder="/home/user/sillytavern_data/">
+                                        <div class="form-text">Absolute path on the SFTP server. Must end with '/'.</div>
+                                    </div>
+                                    <button id="sftp-connect-btn" class="btn btn-primary">Save SFTP Config</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sync settings (Keep as is from template) -->
+                 <div class="card">
+                    <div class="card-header">Sync Settings</div>
+                    <div class="card-body">
+                        <!-- Keep Sync Mode, Hash Comparison, Directory Selection etc. from the template -->
+                        <div class="mb-3">
+                            <label for="sync-mode" class="form-label">Sync Mode</label>
+                            <select class="form-select" id="sync-mode">
+                                <option value="bidirectional" selected>Bidirectional (Merge Data)</option>
+                                <option value="upload-only">Upload Only (Local → Cloud)</option>
+                                <option value="download-only">Download Only (Cloud → Local)</option>
+                                <option value="mirror">Mirror Mode (Complete Sync, including deletion)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="compare-hash">
+                                <label class="form-check-label" for="compare-hash">Use file hash comparison (more accurate but slower)</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Directory Selection</label>
+                            <div class="d-flex justify-content-between mb-2">
+                                <button id="expand-all-btn" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrows-expand"></i> Expand All
+                                </button>
+                                <button id="collapse-all-btn" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrows-collapse"></i> Collapse All
+                                </button>
+                                <button id="select-all-btn" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-check-all"></i> Select All
+                                </button>
+                                <button id="deselect-all-btn" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-x-lg"></i> Deselect All
+                                </button>
+                            </div>
+                            <div class="directory-tree" id="directory-tree">
+                                <div class="d-flex justify-content-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span class="ms-2">Loading directory structure...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button id="start-sync-btn" class="btn btn-primary" disabled>
+                                Start Sync
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sync Progress (Keep as is from template) -->
+                 <div class="card" id="sync-progress">
+                    <div class="card-header">Sync Progress</div>
+                    <div class="card-body">
+                        <div class="progress mb-3">
+                            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div id="progress-text" class="mb-2 fw-bold">Preparing sync...</div>
+                        <div id="progress-details" class="text-muted"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <!-- Connection Status (Keep as is from template) -->
+                 <div class="card mb-4">
+                    <div class="card-header">Connection Status</div>
+                    <div class="card-body">
+                        <div id="connection-status">
+                            <div class="alert alert-warning">
+                                Not connected to any cloud storage service
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sync History (Keep as is from template) -->
+                <div class="card">
+                    <div class="card-header">Sync History</div>
+                    <div class="card-body">
+                        <div id="sync-history">
+                            <div class="text-center text-muted">No sync history</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    
+    <!-- CSRF Token Support (Keep as is from template) -->
+     <script>
+        // 获取CSRF令牌并设置全局变量
+        async function fetchCsrfToken() {
+            try {
+                const response = await fetch('/csrf-token');
+                if (response.ok) {
+                    const data = await response.json();
+                    window.csrfToken = data.token;
+                    console.log("CSRF token loaded successfully into window.csrfToken");
+                    return true;
+                } else {
+                    console.error("Failed to fetch CSRF token, status:", response.status);
+                     // Fallback or error handling if CSRF is not setup in SillyTavern yet
+                    window.csrfToken = null;
+                    console.warn("CSRF token endpoint not found or failed. Proceeding without CSRF token.");
+                    return false;
+                }
+            } catch (error) {
+                console.error("Error fetching CSRF token:", error);
+                 // Fallback or error handling
+                 window.csrfToken = null;
+                 console.warn("CSRF token fetch failed. Proceeding without CSRF token.");
+                 return false;
+            }
+        }
+        
+        // 页面加载时获取CSRF令牌
+        window.addEventListener('DOMContentLoaded', fetchCsrfToken);
+    </script>
+    
+    <script src="main.js"></script>
+</body>
+</html> 

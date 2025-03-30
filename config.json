@@ -1,0 +1,24 @@
+{
+  "providers": [
+    {
+      "type": "github",
+      "name": "GitHub: fuwei99/sillytraven_data",
+      "enabled": true,
+      "config": {
+        "token": "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",
+        "repository": "fuwei99/sillytraven_data",
+        "branch": "main",
+        "pathPrefix": "",
+        "repo": "fuwei99/sillytraven_data"
+      },
+      "id": "ff71f56d-f0b4-4253-b311-6c8fb54e2810"
+    }
+  ],
+  "syncStatus": {
+    "ff71f56d-f0b4-4253-b311-6c8fb54e2810": {
+      "status": "error",
+      "lastSyncTime": "2025-03-30T08:53:24.289Z",
+      "lastSyncError": "Too many upload failures in batch 2. Aborting sync."
+    }
+  }
+}
